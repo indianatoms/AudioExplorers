@@ -7,66 +7,85 @@ Created on Sat Apr  9 12:11:00 2022
 
 import numpy as np
 from sklearn.cluster import KMeans
+import scipy
+from scipy import fftpack
 
 
 musicData  = np.load('music_data.npy')
 otherData = np.load('other_data.npy')
 
-
 samples = musicData.shape[0]; #1050
 frequencyBands = musicData.shape[1]; #30
 timeframes = musicData.shape[2]; #79
 
-# # --------------------------------------
-# ### COMBINING THE DATA FOR KMEANS ###
-#to compile all data at once:
-    #takes 10+ minutes!
-counter = 0
-combinedMusic = musicData[counter,:,0]
-combinedOther = otherData[counter,:,0]
-np.save('combinedMusicv2.npy', combinedMusic)
-np.save('combinedOtherv2.npy', combinedOther)
+# # # --------------------------------------
+# # ### COMBINING THE DATA FOR KMEANS ###
+# #to compile all data at once:
+#     #takes 10+ minutes!
+# counter = 0
+# combinedMusic = musicData[counter,:,0]
+# combinedOther = otherData[counter,:,0]
+# np.save('combinedMusicv2.npy', combinedMusic)
+# np.save('combinedOtherv2.npy', combinedOther)
  
-while counter< 10499:
-    print('data from: ', counter)
-    combinedMusic = musicData[counter,:,0]
-    combinedOther = otherData[counter,:,0]
-    print(combinedMusic.shape)
-    for sample in range(counter+1, counter+499):
-        for t in range(0, 79):
-            combinedMusic = np.vstack((combinedMusic, musicData[sample, :, t]))
-            combinedOther = np.vstack((combinedOther, otherData[sample, :, t]))
+# while counter< 10499:
+#     print('data from: ', counter)
+#     combinedMusic = musicData[counter,:,0]
+#     combinedOther = otherData[counter,:,0]
+#     print(combinedMusic.shape)
+#     for sample in range(counter+1, counter+499):
+#         for t in range(0, 79):
+#             combinedMusic = np.vstack((combinedMusic, musicData[sample, :, t]))
+#             combinedOther = np.vstack((combinedOther, otherData[sample, :, t]))
     
-    #combinedAll = np.load('combinedAll.npy')
-    combinedMusicAll = np.load('combinedMusicv2.npy')
-    combinedOtherAll = np.load('combinedOtherv2.npy')
-    print('sizes: ')
-    print(combinedMusicAll.shape, ' ', combinedOtherAll.shape)
+#     #combinedAll = np.load('combinedAll.npy')
+#     combinedMusicAll = np.load('combinedMusicv2.npy')
+#     combinedOtherAll = np.load('combinedOtherv2.npy')
+#     print('sizes: ')
+#     print(combinedMusicAll.shape, ' ', combinedOtherAll.shape)
     
-    combinedMusicComplete = np.vstack((combinedMusicAll, combinedMusic))
-    combinedOtherComplete = np.vstack((combinedOtherAll, combinedOther))        
-    #combined = np.vstack((combinedMusicAll, combinedOtherAll))
-    # combinedAllComplete = np.vstack((combinedAll, combined))
+#     combinedMusicComplete = np.vstack((combinedMusicAll, combinedMusic))
+#     combinedOtherComplete = np.vstack((combinedOtherAll, combinedOther))        
+#     #combined = np.vstack((combinedMusicAll, combinedOtherAll))
+#     # combinedAllComplete = np.vstack((combinedAll, combined))
     
-    np.save('combinedMusicv2.npy', combinedMusicComplete)
-    np.save('combinedOtherv2.npy', combinedOtherComplete)
-    counter = counter + 500
+#     np.save('combinedMusicv2.npy', combinedMusicComplete)
+#     np.save('combinedOtherv2.npy', combinedOtherComplete)
+#     counter = counter + 500
     
-    print('deleting')
-    del combinedMusic, combinedOther, combinedMusicAll, combinedOtherAll, combinedMusicComplete, combinedOtherComplete
-#---------------------
-#---------------------
-print('DONEE')
+#     print('deleting')
+#     del combinedMusic, combinedOther, combinedMusicAll, combinedOtherAll, combinedMusicComplete, combinedOtherComplete
+# #---------------------
+# #---------------------
+# print('DONEE')
 #combinedAll = np.load('combinedAll.npy')
+
 combinedMusic = np.load('combinedMusic.npy') #all entries with music, shape 1500*79 x 30
 combinedOther = np.load('combinedOther.npy')
 combinedAll = np.vstack((combinedMusic, combinedOther))
 
 
+## MAKING MFCC CEPSTRUM frm input log mel spectrum
+## ----------------------
+DCF = scipy.fftpack.dct(combinedMusic[0,:])
+print('normal: ', combinedMusic[0,:])
+print('DCF: ', DCF)
+MFCC_music = np.zeros((combinedMusic.shape[0], combinedMusic.shape[1]))
+MFCC_other = np.zeros((combinedMusic.shape[0], combinedMusic.shape[1]))
+
+for sample in range(0, combinedMusic.shape[0]):
+    DCF_music = scipy.fftpack.dct(combinedMusic[sample,:])
+    DCF_other = scipy.fftpack.dct(combinedOther[sample,:])  
+    for i in range(0, DCF_music.shape[0]):
+        MFCC_music[sample][i] = DCF_music[i]
+        MFCC_other[sample][i] = DCF_other[i]
+## -----------------------------------       
+
+
 print(combinedAll.shape, combinedMusic.shape, combinedOther.shape)
-print('computing kmeans')
+print('computing kmeans for LOG MEL SPECTRUM')
 kmeans = KMeans(n_clusters =2, random_state=0).fit(combinedAll)
-print(kmeans.cluster_centers_)
+# print(kmeans.cluster_centers_)
 
 print('MUSIC PREDICTION: ')
 print('here  everything should be music(0)')
@@ -88,6 +107,34 @@ music = np.count_nonzero(otherpredictions == 0)
 other = np.count_nonzero(otherpredictions == 1)
 print('classified as music: ', music)
 print('classified as other: ', other)
+
+combinedMFCC = np.vstack((MFCC_music, MFCC_other))
+
+print('computing kmeans for LOG MEL CEPSTRUM')
+kmeans = KMeans(n_clusters =2, random_state=0).fit(combinedMFCC)
+# print(kmeans.cluster_centers_)
+
+print('MUSIC PREDICTION: ')
+print('here  everything should be music(0)')
+musicpredictions = kmeans.predict(MFCC_music)
+
+print('total: ', musicpredictions.shape[0])
+total = musicpredictions.shape[0]
+music = np.count_nonzero(musicpredictions == 0)
+other = np.count_nonzero(musicpredictions == 1)
+print('classified as music: ', music)
+print('classified as other: ', other)
+
+print('OTHER PREDICTION: ')
+print('here everything should be other (1)')
+otherpredictions = kmeans.predict(MFCC_other)
+print('total: ', otherpredictions.shape[0])
+total = otherpredictions.shape[0]
+music = np.count_nonzero(otherpredictions == 0)
+other = np.count_nonzero(otherpredictions == 1)
+print('classified as music: ', music)
+print('classified as other: ', other)
+
 
 # print(combinedMusic.shape)
 
