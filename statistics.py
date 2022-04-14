@@ -50,11 +50,6 @@ def Statistics(combinedMusic, combinedOther):
     print('median: ', otherMedian)
     print('std dev: ', otherStd)
 
-
-combinedMusic = np.load('combinedMusicv2.npy') #all entries with music, shape 1500*79 x 30
-combinedOther = np.load('combinedOtherv2.npy')
-
-
 #PCA
 def PCA_func(combinedMusic, combinedOther):
 
@@ -70,11 +65,15 @@ def PCA_func(combinedMusic, combinedOther):
     combinedAll = np.vstack((combinedMusic, combinedOther))
     return combinedMusic, combinedOther, combinedAll
 
-combinedMusic, combinedOther, combinedAll = PCA_func(combinedMusic, combinedOther)
-Statistics(combinedMusic, combinedOther)
+
+#combinedMusic = np.load('combinedMusicv2.npy') #all entries with music, shape 1500*79 x 30
+#combinedOther = np.load('combinedOtherv2.npy')
+
+#combinedMusic, combinedOther, combinedAll = PCA_func(combinedMusic, combinedOther)
+#Statistics(combinedMusic, combinedOther)
 
 
 
-Kmeans.Kmeans(combinedMusic, combinedOther, combinedAll)
+#Kmeans.Kmeans(combinedMusic, combinedOther, combinedAll)
 
 
